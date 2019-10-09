@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+
+import serial
+import sys
+import argparse
+
+parser = argparse.ArgumentParser(description='Toggle Power for PROLITE TF6538UHSC-B1AG')
+parser.add_argument('--power', metavar='on|off', help='set this the power state')
+parser.add_argument('--setsource', metavar='vga|hdmi1|hdmi2|dvi|dp', help='set this the power state')
+
+args = parser.parse_args()
+
+def sendCommand(cmdLength,cmdType,cmdCode,cmdVal):
+	ser = serial.Serial()
+	ser.port='/dev/ttyS0'
+	ser.open()
+	if cmdLength == 8:
+		cmdLengthHex = 0x38
+	elif cmdLength == 9:
+		cmdLengthHex = 0x39
+	elif cmdLength == 10:
+		cmdLengthHex = 0x3a
+	else:
+		sys.exit()
+	data = [
+		cmdLengthHex,0x30,0x31,ord(cmdType),cmdCode,0x30,0x30,cmdVal,0x0D
+	]
+	
+	cmdBytes = serial.to_bytes(data)
+	ser.write(cmdBytes)
+	response = ser.read()
+	print "Got Response: %s" % response
+	ser.close()
+	
+
+def powerOn():
+	print("Power On");
+	sendCommand(8,'s',0x21, 0x31)	
+
+def powerOff():
+	print("Power Off");
+	sendCommand(8,'s',0x21, 0x30)
+
+def setSource(sourceName):
+	vga = 0x30
+	hdmi1 = 0x31
+	hdmi2 = 0x32
+	dvi = 0x36
+	dp = 0x37
+	print("Set Source [%s]" % sourceName.upper());
+	if sourceName.lower() == 'vga':
+		sourceVal = vga	
+	elif sourceName.lower() == 'hdmi1':
+		sourceVal = hdmi1	
+	elif sourceName.lower() == 'hdmi2':
+		sourceVal = hdmi2
+	elif sourceName.lower() == 'dvi':
+		sourceVal = dvi	
+	elif sourceName.lower() == 'dp':
+		sourceVal = dp
+	else:
+		print("Bad Source Name : %s" % sourceName)
+		return False
+	sendCommand(8,'s',0x22, sourceVal)
+
+
+if args.power == "on":
+	powerOn()
+elif args.power == "off":
+	powerOff()
+else:
+	print("Command not found. Use -h for more information")
+	
+if args.setsource:
+	setSource(args.setsource)
